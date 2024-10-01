@@ -10,7 +10,8 @@ export interface RHFRadioPropsInterface extends ReactHookFormComponentProps {
 }
 
 const Radio = (props: RHFRadioPropsInterface) => {
-  const { label, name, options, control, errors, ...rest } = props;
+  const { label, additionalLabels, name, options, control, errors, ...rest } =
+    props;
 
   const isInvalid = !!errors[name];
 
@@ -20,6 +21,11 @@ const Radio = (props: RHFRadioPropsInterface) => {
         <label className="pb-3" htmlFor={name}>
           {label}
         </label>
+      )}
+      {!!additionalLabels && (
+        <div>
+          <small className="pb-3">{additionalLabels}</small>
+        </div>
       )}
       <Controller
         name={name}

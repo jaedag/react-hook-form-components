@@ -10,7 +10,8 @@ export interface RHFCheckboxPropsInterface extends ReactHookFormComponentProps {
 }
 
 const Checkbox = (props: RHFCheckboxPropsInterface) => {
-  const { label, name, options, control, errors, ...rest } = props;
+  const { label, additionalLabels, name, options, control, errors, ...rest } =
+    props;
 
   const isInvalid = !!errors[name];
 
@@ -20,6 +21,12 @@ const Checkbox = (props: RHFCheckboxPropsInterface) => {
         <label className="pb-3" htmlFor={name}>
           {label}
         </label>
+      )}
+
+      {!!additionalLabels && (
+        <div>
+          <small className="pb-3">{additionalLabels}</small>
+        </div>
       )}
       <Controller
         name={name}
@@ -32,13 +39,14 @@ const Checkbox = (props: RHFCheckboxPropsInterface) => {
                   type="checkbox"
                   id={`${name}-${option.value}`}
                   value={option.value}
-                  checked={field.value.includes(option.value)}
+                  checked={field.value?.includes(option.value)}
                   onChange={() => {
-                    const newValue = field.value.includes(option.value)
-                      ? field.value.filter(
+                    const newValue = field.value?.includes(option.value)
+                      ? field.value?.filter(
                           (val: string) => val !== option.value
                         )
-                      : [...field.value, option.value];
+                      : [...(field.value ?? []), option.value];
+
                     field.onChange(newValue);
                   }}
                   className="form-checkbox"

@@ -8,44 +8,59 @@ import Select from "./rhf-components/Select";
 import Radio from "./rhf-components/Radio";
 import Checkbox from "./rhf-components/Checkbox";
 
-type FormValues = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  issue: string;
-  issueTopic: string;
-  issueDescription: string;
-  gameConsoles: string[];
-  date: Date;
+type DynamicFieldsDataType = {
+  id: number;
+  questionType: string;
+  active: boolean;
+  questionText: string;
+  additionalLabels: string;
+  locale: string;
+  answers: { id: number; answerText: string; locale: string }[];
+  required: boolean;
+  errorMessage: string;
+};
+
+type MockyResponseType = {
+  dynamicFieldsData: DynamicFieldsDataType[];
 };
 
 function App() {
   const [error, setError] = useState("");
-  const [radioQuestions, setRadioQuestions] = useState([]);
+  const [radioQuestions, setRadioQuestions] = useState<DynamicFieldsDataType[]>(
+    []
+  );
+  const [checkboxQuestions, setCheckboxQuestions] = useState<
+    DynamicFieldsDataType[]
+  >([]);
 
-  const initialValues: FormValues = {
+  const initialValues: {
+    [key: string]: string | [];
+  } = {
     firstName: "",
     lastName: "",
     email: "",
-    issue: "",
-    issueTopic: "",
-    issueDescription: "",
-    gameConsoles: [],
-    date: new Date(),
   };
-  const validationRules = useMemo(() => ({}), []);
+  const validationRules: {
+    [key: string]: Yup.Schema;
+  } = useMemo(() => ({}), []);
 
   useEffect(() => {
     const fetchData = async () => {
       const response = await fetch(
         "https://run.mocky.io/v3/8a2c6f8e-09f8-4b18-bbb6-18ecf9c42aae"
       );
-      const data = await response.json();
+      const data: MockyResponseType = await response.json();
 
       const radioQuestionsResponse = data.dynamicFieldsData.filter(
         (item: { questionType: string }) => item.questionType === "RADIO"
       );
+
+      const checkboxQuestionsResponse = data.dynamicFieldsData.filter(
+        (item: { questionType: string }) => item.questionType === "CHECKBOX"
+      );
+
       setRadioQuestions(radioQuestionsResponse);
+      setCheckboxQuestions(checkboxQuestionsResponse);
 
       return response;
     };
@@ -53,7 +68,9 @@ function App() {
     fetchData();
   }, [validationRules]);
 
-  radioQuestions?.map((item) => {
+  radioQuestions?.forEach((item) => {
+    initialValues[item.id.toString()] = "";
+
     if (item.required) {
       validationRules[item.id.toString()] = Yup.string().required(
         item.errorMessage
@@ -62,34 +79,37 @@ function App() {
 
     validationRules[item.id.toString()] = Yup.string();
   });
+  checkboxQuestions?.forEach((item) => {
+    initialValues[item.id.toString()] = [];
 
-  console.log("🚀 ~ file: App.tsx:38 ~ validationRules:", validationRules);
+    if (item.required) {
+      validationRules[item.id.toString()] = Yup.array()
+        .of(Yup.string().required(item.errorMessage))
+        .min(1, item.errorMessage)
+        .required(item.errorMessage);
+    }
+
+    validationRules[item.id.toString()] = Yup.array().of(Yup.string());
+  });
 
   const validationSchema = Yup.object({
     firstName: Yup.string().required("First Name is a required field"),
     lastName: Yup.string().required("Last Name is a required field"),
     email: Yup.string().email().required("Email is a required field"),
-    issue: Yup.string().required("Issue is a required field"),
-    issueTopic: Yup.string().required("Issue Topic is a required field"),
-    issueDescription: Yup.string().required(
-      "Issue Description is a required field"
-    ),
-    gameConsoles: Yup.array()
-      .of(Yup.string().required())
-      .min(1, "At least one game console must be selected")
-      .required("Game Consoles is a required field"),
-    date: Yup.date().required(),
     ...validationRules,
   });
 
   const {
     handleSubmit,
     control,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<typeof initialValues>({
+    // @ts-ignore
     resolver: yupResolver(validationSchema),
     defaultValues: initialValues,
   });
+  console.log("🚀 ~ file: App.tsx:113 ~ getValues:", getValues());
 
   const onSubmit = async (values: typeof initialValues) => {
     try {
@@ -107,17 +127,6 @@ function App() {
     { key: "Option 1", value: "option1" },
     { key: "Option 2", value: "option2" },
     { key: "Option 3", value: "option3" },
-  ];
-
-  // const RADIO_OPTIONS = [
-  //   { key: "Yes", value: "yes" },
-  //   { key: "No", value: "no" },
-  // ];
-
-  const CHECKBOX_OPTIONS = [
-    { key: "PlayStation", value: "ps" },
-    { key: "Xbox", value: "xbox" },
-    { key: "Nintendo", value: "nintendo" },
   ];
 
   return (
@@ -160,10 +169,27 @@ function App() {
         />
         {radioQuestions.map((radioItem) => (
           <Radio
+            key={radioItem.id}
             label={radioItem.questionText}
+            additionalLabels={radioItem.additionalLabels}
             name={radioItem.id.toString()}
-            options={radioItem.answers.map(
-              (item: { answerText: string; answerValue: string }) => ({
+            options={radioItem.answers.map((item: { answerText: string }) => ({
+              key: item.answerText,
+              value: item.answerText,
+            }))}
+            control={control}
+            errors={errors}
+          />
+        ))}
+
+        {checkboxQuestions.map((checkboxItem) => (
+          <Checkbox
+            key={checkboxItem.id}
+            label={checkboxItem.questionText}
+            additionalLabels={checkboxItem.additionalLabels}
+            name={checkboxItem.id.toString()}
+            options={checkboxItem.answers.map(
+              (item: { answerText: string }) => ({
                 key: item.answerText,
                 value: item.answerText,
               })
@@ -174,11 +200,15 @@ function App() {
         ))}
 
         <Checkbox
-          label="Select Game Consoles"
-          name="gameConsoles"
-          options={CHECKBOX_OPTIONS}
+          name="terms"
+          label="I agree to the terms and conditions"
           control={control}
           errors={errors}
+          additionalLabels="Please read the terms and conditions"
+          options={[
+            { key: "I agree", value: "agree" },
+            { key: "I do not agree", value: "disagree" },
+          ]}
         />
 
         <button

@@ -8,6 +8,7 @@ export type SelectOptions = {
 
 export interface ReactHookFormComponentProps {
   label?: string;
+  additionalLabels?: string;
   name: string;
   placeholder?: string;
   options?: { key: string; value: string }[];
