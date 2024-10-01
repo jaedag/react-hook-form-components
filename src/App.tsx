@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as Yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import "./App.css";
@@ -21,6 +21,7 @@ type FormValues = {
 
 function App() {
   const [error, setError] = useState("");
+  const [radioQuestions, setRadioQuestions] = useState([]);
 
   const initialValues: FormValues = {
     firstName: "",
@@ -32,6 +33,37 @@ function App() {
     gameConsoles: [],
     date: new Date(),
   };
+  const validationRules = useMemo(() => ({}), []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = await fetch(
+        "https://run.mocky.io/v3/8a2c6f8e-09f8-4b18-bbb6-18ecf9c42aae"
+      );
+      const data = await response.json();
+
+      const radioQuestionsResponse = data.dynamicFieldsData.filter(
+        (item: { questionType: string }) => item.questionType === "RADIO"
+      );
+      setRadioQuestions(radioQuestionsResponse);
+
+      return response;
+    };
+
+    fetchData();
+  }, [validationRules]);
+
+  radioQuestions?.map((item) => {
+    if (item.required) {
+      validationRules[item.id.toString()] = Yup.string().required(
+        item.errorMessage
+      );
+    }
+
+    validationRules[item.id.toString()] = Yup.string();
+  });
+
+  console.log("🚀 ~ file: App.tsx:38 ~ validationRules:", validationRules);
 
   const validationSchema = Yup.object({
     firstName: Yup.string().required("First Name is a required field"),
@@ -47,12 +79,12 @@ function App() {
       .min(1, "At least one game console must be selected")
       .required("Game Consoles is a required field"),
     date: Yup.date().required(),
+    ...validationRules,
   });
 
   const {
     handleSubmit,
     control,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<typeof initialValues>({
     resolver: yupResolver(validationSchema),
@@ -72,15 +104,15 @@ function App() {
   };
 
   const SELECT_OPTIONS = [
-    { key: "Select Option 1", value: "option1" },
-    { key: "Select Option 2", value: "option2" },
-    { key: "Select Option 3", value: "option3" },
+    { key: "Option 1", value: "option1" },
+    { key: "Option 2", value: "option2" },
+    { key: "Option 3", value: "option3" },
   ];
 
-  const RADIO_OPTIONS = [
-    { key: "Yes", value: "yes" },
-    { key: "No", value: "no" },
-  ];
+  // const RADIO_OPTIONS = [
+  //   { key: "Yes", value: "yes" },
+  //   { key: "No", value: "no" },
+  // ];
 
   const CHECKBOX_OPTIONS = [
     { key: "PlayStation", value: "ps" },
@@ -126,14 +158,20 @@ function App() {
           control={control}
           errors={errors}
         />
-
-        <Radio
-          label="Do you have an issue"
-          name="issue"
-          options={RADIO_OPTIONS}
-          control={control}
-          errors={errors}
-        />
+        {radioQuestions.map((radioItem) => (
+          <Radio
+            label={radioItem.questionText}
+            name={radioItem.id.toString()}
+            options={radioItem.answers.map(
+              (item: { answerText: string; answerValue: string }) => ({
+                key: item.answerText,
+                value: item.answerText,
+              })
+            )}
+            control={control}
+            errors={errors}
+          />
+        ))}
 
         <Checkbox
           label="Select Game Consoles"
