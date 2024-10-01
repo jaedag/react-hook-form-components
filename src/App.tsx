@@ -71,16 +71,18 @@ function App() {
   radioQuestions?.forEach((item) => {
     initialValues[item.id.toString()] = "";
 
+    validationRules[item.id.toString()] = Yup.string();
+
     if (item.required) {
       validationRules[item.id.toString()] = Yup.string().required(
         item.errorMessage
       );
     }
-
-    validationRules[item.id.toString()] = Yup.string();
   });
   checkboxQuestions?.forEach((item) => {
     initialValues[item.id.toString()] = [];
+
+    validationRules[item.id.toString()] = Yup.array().of(Yup.string());
 
     if (item.required) {
       validationRules[item.id.toString()] = Yup.array()
@@ -88,32 +90,27 @@ function App() {
         .min(1, item.errorMessage)
         .required(item.errorMessage);
     }
-
-    validationRules[item.id.toString()] = Yup.array().of(Yup.string());
   });
 
   const validationSchema = Yup.object({
     firstName: Yup.string().required("First Name is a required field"),
     lastName: Yup.string().required("Last Name is a required field"),
-    email: Yup.string().email().required("Email is a required field"),
     ...validationRules,
   });
 
   const {
     handleSubmit,
     control,
-    getValues,
     formState: { errors, isSubmitting },
   } = useForm<typeof initialValues>({
-    // @ts-ignore
+    // @ts-expect-error - TS2322: Type 'Yup.ObjectSchema<object>' is not assignable to type 'Schema<Record<string, any>>'.
     resolver: yupResolver(validationSchema),
     defaultValues: initialValues,
   });
-  console.log("🚀 ~ file: App.tsx:113 ~ getValues:", getValues());
 
   const onSubmit = async (values: typeof initialValues) => {
     try {
-      console.log(values);
+      console.log("values", values);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -198,18 +195,6 @@ function App() {
             errors={errors}
           />
         ))}
-
-        <Checkbox
-          name="terms"
-          label="I agree to the terms and conditions"
-          control={control}
-          errors={errors}
-          additionalLabels="Please read the terms and conditions"
-          options={[
-            { key: "I agree", value: "agree" },
-            { key: "I do not agree", value: "disagree" },
-          ]}
-        />
 
         <button
           type="submit"
